@@ -86,7 +86,7 @@ def register():
 @app.route("/login", methods=["GET", "POST"])
 def login():
     if "user_id" in session:
-        return redirect(url_for("landing"))
+        return redirect(url_for("profile"))
 
     if request.method == "GET":
         return render_template("login.html")
@@ -110,7 +110,7 @@ def login():
     session["user_id"] = user["id"]
     session["user_name"] = user["name"]
 
-    return redirect(url_for("landing"))
+    return redirect(url_for("profile"))
 
 
 @app.route("/terms")
@@ -129,13 +129,50 @@ def logout():
     return redirect(url_for("landing"))
 
 
+@app.route("/profile")
+def profile():
+    if "user_id" not in session:
+        return redirect(url_for("login"))
+
+    user = {
+        "name": session.get("user_name", "Demo User"),
+        "email": "demo@spendly.com",
+        "member_since": "September 2026",
+        "initials": "DU",
+    }
+
+    stats = {
+        "total_spent": "₹8,240",
+        "transaction_count": 12,
+        "top_category": "Food",
+    }
+
+    transactions = [
+        {"date": "Sep 18, 2026", "description": "Lunch at cafe", "category": "Food", "amount": "₹350"},
+        {"date": "Sep 16, 2026", "description": "Monthly bus pass", "category": "Transport", "amount": "₹1,200"},
+        {"date": "Sep 14, 2026", "description": "Electricity bill", "category": "Bills", "amount": "₹2,100"},
+        {"date": "Sep 11, 2026", "description": "Movie ticket", "category": "Entertainment", "amount": "₹450"},
+    ]
+
+    categories = [
+        {"name": "Food", "amount": "₹3,200", "percent": 39},
+        {"name": "Bills", "amount": "₹2,100", "percent": 25},
+        {"name": "Transport", "amount": "₹1,650", "percent": 20},
+        {"name": "Entertainment", "amount": "₹1,290", "percent": 16},
+    ]
+
+    return render_template(
+        "profile.html",
+        user=user,
+        stats=stats,
+        transactions=transactions,
+        categories=categories,
+    )
+
+
 # ------------------------------------------------------------------ #
 # Placeholder routes — students will implement these                  #
 # ------------------------------------------------------------------ #
-
-@app.route("/profile")
-def profile():
-    return "Profile page — coming in Step 4"
 
 
 @app.route("/expenses/add")
