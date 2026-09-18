@@ -57,4 +57,4 @@ No new dependencies. Uses `werkzeug.security` (already installed) and Flask's bu
 - [ ] Submitting with an already-registered email re-renders the form with "Email already registered" error
 - [ ] Submitting with any empty field re-renders the form with a validation error
 - [ ] Password is stored as a hash — never plaintext — verifiable by inspecting `spendly.db`
-- [ ] No duplicate user is created on repeated valid submissions with the same email
+- [ ] No duplicate user is created on repeated valid submissions with the same email 
