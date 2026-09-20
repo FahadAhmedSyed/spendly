@@ -1,13 +1,7 @@
 # Spec: Backend Connection
 
 ## Overview
-Step 5 replaces all hardcoded data in the `/profile` route with live queries
-against the SQLite database. The profile page currently renders a static demo
-user, fixed summary stats, a hand-typed transaction list, and a hardcoded
-category breakdown. This step wires those four sections to real data so that
-every logged-in user sees their own expenses. Three parallel subagents handle
-the three independent data concerns — transaction history, summary stats, and
-category breakdown — before being integrated into the single `/profile` route.
+Step 5 replaces all hardcoded data in the `/profile` route with live queries against the SQLite database. The profile page currently renders a static demo user, fixed summary stats, a hand-typed transaction list, and a hardcoded category breakdown. This step wires those four sections to real data so that every logged-in user sees their own expenses. Three parallel subagents handle the three independent data concerns — transaction history, summary stats, and category breakdown — before being integrated into the single `/profile` route.
 
 ## Depends on
 - Step 1: Database setup (tables and `get_db()` exist)
