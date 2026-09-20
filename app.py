@@ -4,9 +4,24 @@ from flask import Flask, redirect, render_template, request, session, url_for
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from database.db import get_db, init_db, seed_db
+from database.queries import (
+    get_category_breakdown,
+    get_recent_transactions,
+    get_summary_stats,
+    get_user_by_id,
+)
 
 app = Flask(__name__)
 app.secret_key = "dev-secret-key"
+
+
+def _initials(name):
+    parts = [p for p in name.strip().split() if p]
+    if not parts:
+        return "?"
+    if len(parts) == 1:
+        return parts[0][0].upper()
+    return (parts[0][0] + parts[-1][0]).upper()
 
 with app.app_context():
     init_db()
@@ -134,32 +149,14 @@ def profile():
     if "user_id" not in session:
         return redirect(url_for("login"))
 
-    user = {
-        "name": session.get("user_name", "Demo User"),
-        "email": "demo@spendly.com",
-        "member_since": "September 2026",
-        "initials": "DU",
-    }
+    user_id = session["user_id"]
 
-    stats = {
-        "total_spent": "₹8,240",
-        "transaction_count": 12,
-        "top_category": "Food",
-    }
+    user = get_user_by_id(user_id)
+    user["initials"] = _initials(user["name"])
 
-    transactions = [
-        {"date": "Sep 18, 2026", "description": "Lunch at cafe", "category": "Food", "amount": "₹350"},
-        {"date": "Sep 16, 2026", "description": "Monthly bus pass", "category": "Transport", "amount": "₹1,200"},
-        {"date": "Sep 14, 2026", "description": "Electricity bill", "category": "Bills", "amount": "₹2,100"},
-        {"date": "Sep 11, 2026", "description": "Movie ticket", "category": "Entertainment", "amount": "₹450"},
-    ]
-
-    categories = [
-        {"name": "Food", "amount": "₹3,200", "percent": 39},
-        {"name": "Bills", "amount": "₹2,100", "percent": 25},
-        {"name": "Transport", "amount": "₹1,650", "percent": 20},
-        {"name": "Entertainment", "amount": "₹1,290", "percent": 16},
-    ]
+    stats = get_summary_stats(user_id)
+    transactions = get_recent_transactions(user_id)
+    categories = get_category_breakdown(user_id)
 
     return render_template(
         "profile.html",
