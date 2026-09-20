@@ -30,6 +30,16 @@ def _largest_remainder_pct(totals):
     return floored
 
 
+def _date_filter_clause(date_from, date_to):
+    """Return (sql_fragment, params_tuple) for an optional inclusive
+    date-range filter. Only applies when BOTH bounds are provided, so
+    that callers with no filter behave exactly as before this feature
+    existed."""
+    if date_from and date_to:
+        return " AND date BETWEEN ? AND ?", (date_from, date_to)
+    return "", ()
+
+
 # --------------------------------------------------------------------- #
 # SUBAGENT 3 owns this function. Do not edit outside this block.
 # --------------------------------------------------------------------- #
@@ -56,14 +66,17 @@ def get_user_by_id(user_id):
 # --------------------------------------------------------------------- #
 # SUBAGENT 2 owns this function. Do not edit outside this block.
 # --------------------------------------------------------------------- #
-def get_summary_stats(user_id):
+def get_summary_stats(user_id, date_from=None, date_to=None):
     """Return dict with total_spent (₹ string), transaction_count (int),
-    top_category (str, "—" if no expenses)."""
+    top_category (str, "—" if no expenses). Optionally restricted to an
+    inclusive [date_from, date_to] range."""
+    clause, extra = _date_filter_clause(date_from, date_to)
+
     conn = get_db()
     try:
         transaction_count = conn.execute(
-            "SELECT COUNT(*) FROM expenses WHERE user_id = ?",
-            (user_id,),
+            "SELECT COUNT(*) FROM expenses WHERE user_id = ?" + clause,
+            (user_id,) + extra,
         ).fetchone()[0]
 
         if transaction_count == 0:
@@ -74,14 +87,14 @@ def get_summary_stats(user_id):
             }
 
         total_amount = conn.execute(
-            "SELECT COALESCE(SUM(amount), 0) FROM expenses WHERE user_id = ?",
-            (user_id,),
+            "SELECT COALESCE(SUM(amount), 0) FROM expenses WHERE user_id = ?" + clause,
+            (user_id,) + extra,
         ).fetchone()[0]
 
         top_category_row = conn.execute(
-            "SELECT category FROM expenses WHERE user_id = ? "
-            "GROUP BY category ORDER BY SUM(amount) DESC LIMIT 1",
-            (user_id,),
+            "SELECT category FROM expenses WHERE user_id = ?" + clause +
+            " GROUP BY category ORDER BY SUM(amount) DESC LIMIT 1",
+            (user_id,) + extra,
         ).fetchone()
     finally:
         conn.close()
@@ -99,15 +112,19 @@ def get_summary_stats(user_id):
 # --------------------------------------------------------------------- #
 # SUBAGENT 1 owns this function. Do not edit outside this block.
 # --------------------------------------------------------------------- #
-def get_recent_transactions(user_id, limit=10):
+def get_recent_transactions(user_id, limit=10, date_from=None, date_to=None):
     """Return list of dicts: date, description, category, amount (₹ string).
-    Most recent first. Empty list if no expenses."""
+    Most recent first. Empty list if no expenses. Optionally restricted to
+    an inclusive [date_from, date_to] range."""
+    clause, extra = _date_filter_clause(date_from, date_to)
+
     conn = get_db()
     try:
         rows = conn.execute(
             "SELECT date, description, category, amount FROM expenses "
-            "WHERE user_id = ? ORDER BY date DESC, id DESC LIMIT ?",
-            (user_id, limit),
+            "WHERE user_id = ?" + clause +
+            " ORDER BY date DESC, id DESC LIMIT ?",
+            (user_id,) + extra + (limit,),
         ).fetchall()
     finally:
         conn.close()
@@ -129,16 +146,20 @@ def get_recent_transactions(user_id, limit=10):
 # --------------------------------------------------------------------- #
 # SUBAGENT 3 owns this function. Do not edit outside this block.
 # --------------------------------------------------------------------- #
-def get_category_breakdown(user_id):
+def get_category_breakdown(user_id, date_from=None, date_to=None):
     """Return list of dicts: name, amount (₹ string), pct (int, sums to
     100, largest category absorbs rounding remainder). Empty list if no
-    expenses."""
+    expenses. Optionally restricted to an inclusive [date_from, date_to]
+    range."""
+    clause, extra = _date_filter_clause(date_from, date_to)
+
     conn = get_db()
     try:
         rows = conn.execute(
             "SELECT category, SUM(amount) as total FROM expenses "
-            "WHERE user_id = ? GROUP BY category ORDER BY total DESC",
-            (user_id,),
+            "WHERE user_id = ?" + clause +
+            " GROUP BY category ORDER BY total DESC",
+            (user_id,) + extra,
         ).fetchall()
     finally:
         conn.close()
