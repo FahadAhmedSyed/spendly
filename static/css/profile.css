@@ -1,0 +1,62 @@
+/* ------------------------------------------------------------------ */
+/* Profile page — date filter bar                                     */
+/* ------------------------------------------------------------------ */
+
+.profile-filter-presets {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+    margin-bottom: 1.5rem;
+}
+
+.profile-filter-preset {
+    display: inline-block;
+    padding: 0.4rem 0.9rem;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--ink-muted);
+    transition: all 0.2s;
+}
+
+.profile-filter-preset:hover {
+    border-color: var(--ink);
+    color: var(--ink);
+}
+
+.profile-filter-preset-active {
+    background: var(--ink);
+    border-color: var(--ink);
+    color: var(--paper);
+}
+
+.profile-filter-preset-active:hover {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--paper);
+}
+
+.profile-filter-form {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 1rem;
+}
+
+.profile-filter-field {
+    margin-bottom: 0;
+    flex: 1 1 160px;
+}
+
+.profile-filter-submit {
+    width: auto;
+    margin-top: 0;
+    padding: 0.6rem 1.5rem;
+    flex-shrink: 0;
+}
+
+@media (max-width: 600px) {
+    .profile-filter-form { flex-direction: column; align-items: stretch; }
+    .profile-filter-submit { width: 100%; }
+}

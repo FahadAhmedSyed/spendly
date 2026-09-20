@@ -1,6 +1,9 @@
+import calendar
+import os
 import sqlite3
+from datetime import date, datetime
 
-from flask import Flask, redirect, render_template, request, session, url_for
+from flask import Flask, flash, redirect, render_template, request, session, url_for
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from database.db import get_db, init_db, seed_db
@@ -12,7 +15,7 @@ from database.queries import (
 )
 
 app = Flask(__name__)
-app.secret_key = "dev-secret-key"
+app.secret_key = os.environ.get("SECRET_KEY", "dev-secret-key")
 
 
 def _initials(name):
@@ -22,6 +25,59 @@ def _initials(name):
     if len(parts) == 1:
         return parts[0][0].upper()
     return (parts[0][0] + parts[-1][0]).upper()
+
+
+def _parse_date_param(value):
+    """Return a date object if value is a well-formed YYYY-MM-DD string,
+    else None (covers missing, empty, and malformed values uniformly)."""
+    if not value:
+        return None
+    try:
+        return datetime.strptime(value, "%Y-%m-%d").date()
+    except ValueError:
+        return None
+
+
+def _shift_months_back(d, months):
+    """Return the date `months` calendar months before d, with the
+    day-of-month clamped to the target month's actual length (e.g.
+    Mar 31 minus 1 month -> Feb 28/29, not a crash or rollover)."""
+    total = d.month - 1 - months
+    year = d.year + total // 12
+    month = total % 12 + 1
+    last_day = calendar.monthrange(year, month)[1]
+    return date(year, month, min(d.day, last_day))
+
+
+def _resolve_presets(today):
+    """Return dict of preset_id -> (date_from_iso, date_to_iso), each
+    a tuple of ISO date strings (or (None, None) for "all time")."""
+    return {
+        "this_month": (today.replace(day=1).isoformat(), today.isoformat()),
+        "last_3_months": (_shift_months_back(today, 3).isoformat(), today.isoformat()),
+        "last_6_months": (_shift_months_back(today, 6).isoformat(), today.isoformat()),
+        "all_time": (None, None),
+    }
+
+
+def _resolve_date_range(args):
+    """Parse date_from/date_to out of request.args, returning a validated
+    (date_from_iso, date_to_iso) pair or (None, None) for "no filter".
+    Malformed or one-sided input silently falls back to no filter; an
+    inverted range (date_from > date_to) also falls back, but flashes an
+    error first."""
+    parsed_from = _parse_date_param(args.get("date_from"))
+    parsed_to = _parse_date_param(args.get("date_to"))
+
+    if not (parsed_from and parsed_to):
+        return None, None
+
+    if parsed_from > parsed_to:
+        flash("Start date must be before end date.")
+        return None, None
+
+    return parsed_from.isoformat(), parsed_to.isoformat()
+
 
 with app.app_context():
     init_db()
@@ -151,12 +207,22 @@ def profile():
 
     user_id = session["user_id"]
 
+    date_from, date_to = _resolve_date_range(request.args)
+
     user = get_user_by_id(user_id)
     user["initials"] = _initials(user["name"])
 
-    stats = get_summary_stats(user_id)
-    transactions = get_recent_transactions(user_id)
-    categories = get_category_breakdown(user_id)
+    stats = get_summary_stats(user_id, date_from=date_from, date_to=date_to)
+    transactions = get_recent_transactions(user_id, date_from=date_from, date_to=date_to)
+    categories = get_category_breakdown(user_id, date_from=date_from, date_to=date_to)
+
+    presets = _resolve_presets(datetime.now().date())
+    preset_by_range = {v: k for k, v in presets.items() if k != "all_time"}
+
+    if not request.args:
+        active_preset = "all_time"
+    else:
+        active_preset = preset_by_range.get((date_from, date_to))
 
     return render_template(
         "profile.html",
@@ -164,6 +230,10 @@ def profile():
         stats=stats,
         transactions=transactions,
         categories=categories,
+        presets=presets,
+        active_preset=active_preset,
+        filter_date_from=date_from or "",
+        filter_date_to=date_to or "",
     )
 
 

@@ -2,6 +2,10 @@
 
 {% block title %}Your Profile — Spendly{% endblock %}
 
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/profile.css') }}">
+{% endblock %}
+
 {% block content %}
 
 <section class="profile-section">
@@ -14,6 +18,33 @@
                 <p class="profile-email">{{ user.email }}</p>
                 <p class="profile-member-since">Member since {{ user.member_since }}</p>
             </div>
+        </div>
+
+        <div class="profile-card profile-filter-card">
+            <h2 class="profile-card-title">Filter by date</h2>
+
+            <div class="profile-filter-presets">
+                <a href="{{ url_for('profile', date_from=presets.this_month[0], date_to=presets.this_month[1]) }}"
+                   class="profile-filter-preset{% if active_preset == 'this_month' %} profile-filter-preset-active{% endif %}">This Month</a>
+                <a href="{{ url_for('profile', date_from=presets.last_3_months[0], date_to=presets.last_3_months[1]) }}"
+                   class="profile-filter-preset{% if active_preset == 'last_3_months' %} profile-filter-preset-active{% endif %}">Last 3 Months</a>
+                <a href="{{ url_for('profile', date_from=presets.last_6_months[0], date_to=presets.last_6_months[1]) }}"
+                   class="profile-filter-preset{% if active_preset == 'last_6_months' %} profile-filter-preset-active{% endif %}">Last 6 Months</a>
+                <a href="{{ url_for('profile') }}"
+                   class="profile-filter-preset{% if active_preset == 'all_time' %} profile-filter-preset-active{% endif %}">All Time</a>
+            </div>
+
+            <form method="GET" action="{{ url_for('profile') }}" class="profile-filter-form">
+                <div class="form-group profile-filter-field">
+                    <label for="date_from">From</label>
+                    <input type="date" id="date_from" name="date_from" class="form-input" value="{{ filter_date_from }}">
+                </div>
+                <div class="form-group profile-filter-field">
+                    <label for="date_to">To</label>
+                    <input type="date" id="date_to" name="date_to" class="form-input" value="{{ filter_date_to }}">
+                </div>
+                <button type="submit" class="btn-submit profile-filter-submit">Apply</button>
+            </form>
         </div>
 
         <div class="profile-stats">

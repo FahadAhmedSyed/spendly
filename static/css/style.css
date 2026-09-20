@@ -122,6 +122,27 @@ a { color: inherit; text-decoration: none; }
 .main-content { min-height: calc(100vh - 60px - 100px); }
 
 /* ------------------------------------------------------------------ */
+/* Flash messages                                                      */
+/* ------------------------------------------------------------------ */
+
+.flash-messages {
+    max-width: var(--max-width);
+    margin: 0 auto;
+    padding: 1.5rem 2rem 0;
+}
+
+.flash-message {
+    background: var(--danger-light);
+    color: var(--danger);
+    border: 1px solid var(--danger);
+    border-radius: var(--radius-sm);
+    padding: 0.75rem 1rem;
+    font-size: 0.875rem;
+}
+
+.flash-message + .flash-message { margin-top: 0.5rem; }
+
+/* ------------------------------------------------------------------ */
 /* Buttons                                                             */
 /* ------------------------------------------------------------------ */
 
