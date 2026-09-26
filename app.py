@@ -3,16 +3,18 @@ import os
 import sqlite3
 from datetime import date, datetime
 
-from flask import Flask, flash, redirect, render_template, request, session, url_for
+from flask import Flask, abort, flash, redirect, render_template, request, session, url_for
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from database.db import get_db, init_db, seed_db
 from database.queries import (
     get_category_breakdown,
+    get_expense_by_id,
     get_recent_transactions,
     get_summary_stats,
     get_user_by_id,
     insert_expense,
+    update_expense,
 )
 
 app = Flask(__name__)
@@ -39,6 +41,46 @@ def _parse_date_param(value):
         return datetime.strptime(value, "%Y-%m-%d").date()
     except ValueError:
         return None
+
+
+def _parse_expense_form(form):
+    """Parse and validate the amount/category/date/description fields
+    shared by the add-expense and edit-expense forms.
+
+    Returns (amount, category, parsed_date, description, error). On
+    error, amount and/or parsed_date may be None — callers should
+    re-populate the form from the raw form values (form.get(...)), not
+    from this function's parsed amount/parsed_date, so the user sees
+    exactly what they typed."""
+    amount_raw = form.get("amount", "").strip()
+    category = form.get("category", "").strip()
+    date_raw = form.get("date", "").strip()
+    description_raw = form.get("description", "").strip()
+    description = description_raw or None
+
+    error = None
+    amount = None
+
+    if not amount_raw:
+        error = "Amount is required."
+    else:
+        try:
+            amount = float(amount_raw)
+            if amount <= 0 or amount > 10_000_000:
+                error = "Amount must be between 0 and 10,000,000."
+        except ValueError:
+            error = "Amount must be a valid number."
+
+    if not error and category not in EXPENSE_CATEGORIES:
+        error = "Please select a valid category."
+
+    parsed_date = _parse_date_param(date_raw) if not error else None
+    if not error and parsed_date is None:
+        error = "Please enter a valid date."
+    elif not error and parsed_date > date.today():
+        error = "Date cannot be in the future."
+
+    return amount, category, parsed_date, description, error
 
 
 def _shift_months_back(d, months):
@@ -257,43 +299,17 @@ def add_expense():
             today=date.today().isoformat(),
         )
 
-    amount_raw = request.form.get("amount", "").strip()
-    category = request.form.get("category", "").strip()
-    date_raw = request.form.get("date", "").strip()
-    description_raw = request.form.get("description", "").strip()
-    description = description_raw or None
-
-    error = None
-    amount = None
-
-    if not amount_raw:
-        error = "Amount is required."
-    else:
-        try:
-            amount = float(amount_raw)
-            if amount <= 0 or amount > 10_000_000:
-                error = "Amount must be between 0 and 10,000,000."
-        except ValueError:
-            error = "Amount must be a valid number."
-
-    if not error and category not in EXPENSE_CATEGORIES:
-        error = "Please select a valid category."
-
-    parsed_date = _parse_date_param(date_raw) if not error else None
-    if not error and parsed_date is None:
-        error = "Please enter a valid date."
-    elif not error and parsed_date > date.today():
-        error = "Date cannot be in the future."
+    amount, category, parsed_date, description, error = _parse_expense_form(request.form)
 
     if error:
         return render_template(
             "add_expense.html",
             categories=EXPENSE_CATEGORIES,
             error=error,
-            amount=amount_raw,
+            amount=request.form.get("amount", "").strip(),
             category=category,
-            date=date_raw,
-            description=description_raw,
+            date=request.form.get("date", "").strip(),
+            description=request.form.get("description", "").strip(),
         )
 
     insert_expense(session["user_id"], amount, category, parsed_date.isoformat(), description)
@@ -302,9 +318,44 @@ def add_expense():
     return redirect(url_for("profile"))
 
 
-@app.route("/expenses/<int:id>/edit")
+@app.route("/expenses/<int:id>/edit", methods=["GET", "POST"])
 def edit_expense(id):
-    return "Edit expense — coming in Step 8"
+    if "user_id" not in session:
+        return redirect(url_for("login"))
+
+    expense = get_expense_by_id(id, session["user_id"])
+    if expense is None:
+        abort(404)
+
+    if request.method == "GET":
+        return render_template(
+            "edit_expense.html",
+            categories=EXPENSE_CATEGORIES,
+            expense_id=id,
+            amount=expense["amount"],
+            category=expense["category"],
+            date=expense["date"],
+            description=expense["description"],
+        )
+
+    amount, category, parsed_date, description, error = _parse_expense_form(request.form)
+
+    if error:
+        return render_template(
+            "edit_expense.html",
+            categories=EXPENSE_CATEGORIES,
+            expense_id=id,
+            error=error,
+            amount=request.form.get("amount", "").strip(),
+            category=category,
+            date=request.form.get("date", "").strip(),
+            description=request.form.get("description", "").strip(),
+        )
+
+    update_expense(id, session["user_id"], amount, category, parsed_date.isoformat(), description)
+    flash("Expense updated.", "success")
+
+    return redirect(url_for("profile"))
 
 
 @app.route("/expenses/<int:id>/delete")

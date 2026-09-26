@@ -32,6 +32,47 @@ def insert_expense(user_id, amount, category, expense_date, description):
         conn.close()
 
 
+def get_expense_by_id(expense_id, user_id):
+    """Return dict with id, amount, category, date, description for the
+    expense if it exists and belongs to user_id, else None."""
+    conn = get_db()
+    try:
+        row = conn.execute(
+            "SELECT id, amount, category, date, description FROM expenses "
+            "WHERE id = ? AND user_id = ?",
+            (expense_id, user_id),
+        ).fetchone()
+    finally:
+        conn.close()
+
+    if row is None:
+        return None
+
+    return {
+        "id": row["id"],
+        "amount": row["amount"],
+        "category": row["category"],
+        "date": row["date"],
+        "description": row["description"],
+    }
+
+
+def update_expense(expense_id, user_id, amount, category, expense_date, description):
+    """Update an existing expense row owned by user_id. description may be
+    None. Scoped to id AND user_id so a caller can never update another
+    user's row even if the id check upstream were bypassed."""
+    conn = get_db()
+    try:
+        conn.execute(
+            "UPDATE expenses SET amount = ?, category = ?, date = ?, description = ? "
+            "WHERE id = ? AND user_id = ?",
+            (amount, category, expense_date, description, expense_id, user_id),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+
 def _largest_remainder_pct(totals):
     grand_total = sum(totals)
     if grand_total <= 0:
@@ -123,19 +164,16 @@ def get_summary_stats(user_id, date_from=None, date_to=None):
 # --------------------------------------------------------------------- #
 
 
-# --------------------------------------------------------------------- #
-# SUBAGENT 1 owns this function. Do not edit outside this block.
-# --------------------------------------------------------------------- #
 def get_recent_transactions(user_id, limit=10, date_from=None, date_to=None):
-    """Return list of dicts: date, description, category, amount (₹ string).
-    Most recent first. Empty list if no expenses. Optionally restricted to
-    an inclusive [date_from, date_to] range."""
+    """Return list of dicts: id, date, description, category, amount (₹
+    string). Most recent first. Empty list if no expenses. Optionally
+    restricted to an inclusive [date_from, date_to] range."""
     clause, extra = _date_filter_clause(date_from, date_to)
 
     conn = get_db()
     try:
         rows = conn.execute(
-            "SELECT date, description, category, amount FROM expenses "
+            "SELECT id, date, description, category, amount FROM expenses "
             "WHERE user_id = ?" + clause +
             " ORDER BY date DESC, id DESC LIMIT ?",
             (user_id,) + extra + (limit,),
@@ -148,13 +186,13 @@ def get_recent_transactions(user_id, limit=10, date_from=None, date_to=None):
         dt = datetime.strptime(row["date"], "%Y-%m-%d")
         display_date = dt.strftime("%b") + f" {dt.day}, " + dt.strftime("%Y")
         transactions.append({
+            "id": row["id"],
             "date": display_date,
             "description": row["description"],
             "category": row["category"],
             "amount": _format_inr(row["amount"]),
         })
     return transactions
-# --------------------------------------------------------------------- #
 
 
 # --------------------------------------------------------------------- #

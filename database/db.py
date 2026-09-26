@@ -7,7 +7,7 @@ from datetime import datetime
 from werkzeug.security import generate_password_hash
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DB_PATH = os.path.join(BASE_DIR, "expense_tracker.db")
+DB_PATH = os.path.join(BASE_DIR, "spendly.db")
 
 
 def get_db():
