@@ -75,7 +75,7 @@ class TestGetRecentTransactions:
         txs = get_recent_transactions(user_id)
         assert len(txs) == 8
         for tx in txs:
-            assert set(tx.keys()) == {"date", "description", "category", "amount"}
+            assert set(tx.keys()) == {"id", "date", "description", "category", "amount"}
             assert tx["amount"].startswith("₹")
 
     def test_newest_first_order(self, app):
