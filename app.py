@@ -12,10 +12,13 @@ from database.queries import (
     get_recent_transactions,
     get_summary_stats,
     get_user_by_id,
+    insert_expense,
 )
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "dev-secret-key")
+
+EXPENSE_CATEGORIES = ["Food", "Transport", "Bills", "Health", "Entertainment", "Shopping", "Other"]
 
 
 def _initials(name):
@@ -73,7 +76,7 @@ def _resolve_date_range(args):
         return None, None
 
     if parsed_from > parsed_to:
-        flash("Start date must be before end date.")
+        flash("Start date must be before end date.", "error")
         return None, None
 
     return parsed_from.isoformat(), parsed_to.isoformat()
@@ -242,9 +245,61 @@ def profile():
 # ------------------------------------------------------------------ #
 
 
-@app.route("/expenses/add")
+@app.route("/expenses/add", methods=["GET", "POST"])
 def add_expense():
-    return "Add expense — coming in Step 7"
+    if "user_id" not in session:
+        return redirect(url_for("login"))
+
+    if request.method == "GET":
+        return render_template(
+            "add_expense.html",
+            categories=EXPENSE_CATEGORIES,
+            today=date.today().isoformat(),
+        )
+
+    amount_raw = request.form.get("amount", "").strip()
+    category = request.form.get("category", "").strip()
+    date_raw = request.form.get("date", "").strip()
+    description_raw = request.form.get("description", "").strip()
+    description = description_raw or None
+
+    error = None
+    amount = None
+
+    if not amount_raw:
+        error = "Amount is required."
+    else:
+        try:
+            amount = float(amount_raw)
+            if amount <= 0 or amount > 10_000_000:
+                error = "Amount must be between 0 and 10,000,000."
+        except ValueError:
+            error = "Amount must be a valid number."
+
+    if not error and category not in EXPENSE_CATEGORIES:
+        error = "Please select a valid category."
+
+    parsed_date = _parse_date_param(date_raw) if not error else None
+    if not error and parsed_date is None:
+        error = "Please enter a valid date."
+    elif not error and parsed_date > date.today():
+        error = "Date cannot be in the future."
+
+    if error:
+        return render_template(
+            "add_expense.html",
+            categories=EXPENSE_CATEGORIES,
+            error=error,
+            amount=amount_raw,
+            category=category,
+            date=date_raw,
+            description=description_raw,
+        )
+
+    insert_expense(session["user_id"], amount, category, parsed_date.isoformat(), description)
+    flash("Expense added.", "success")
+
+    return redirect(url_for("profile"))
 
 
 @app.route("/expenses/<int:id>/edit")

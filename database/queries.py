@@ -18,6 +18,20 @@ def _format_inr(amount):
     return f"₹{round(amount):,}"
 
 
+def insert_expense(user_id, amount, category, expense_date, description):
+    """Insert a new expense row for user_id. description may be None."""
+    conn = get_db()
+    try:
+        conn.execute(
+            "INSERT INTO expenses (user_id, amount, category, date, description) "
+            "VALUES (?, ?, ?, ?, ?)",
+            (user_id, amount, category, expense_date, description),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+
 def _largest_remainder_pct(totals):
     grand_total = sum(totals)
     if grand_total <= 0:
