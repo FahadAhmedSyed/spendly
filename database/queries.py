@@ -73,6 +73,21 @@ def update_expense(expense_id, user_id, amount, category, expense_date, descript
         conn.close()
 
 
+def delete_expense(expense_id, user_id):
+    """Delete an expense row owned by user_id. Scoped to id AND user_id so
+    a caller can never delete another user's row even if the id check
+    upstream were bypassed."""
+    conn = get_db()
+    try:
+        conn.execute(
+            "DELETE FROM expenses WHERE id = ? AND user_id = ?",
+            (expense_id, user_id),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+
 def _largest_remainder_pct(totals):
     grand_total = sum(totals)
     if grand_total <= 0:

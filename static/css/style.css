@@ -191,6 +191,52 @@ a { color: inherit; text-decoration: none; }
     color: var(--ink);
 }
 
+.profile-table-actions {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.6rem;
+}
+
+.delete-expense-form {
+    display: inline-flex;
+}
+
+.btn-ghost-sm,
+.btn-danger {
+    display: inline-block;
+    padding: 0.35rem 0.85rem;
+    border-radius: var(--radius-sm);
+    font-family: var(--font-body);
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-ghost-sm {
+    background: transparent;
+    color: var(--ink-soft);
+    border: 1px solid var(--border);
+    text-decoration: none;
+}
+
+.btn-ghost-sm:hover {
+    border-color: var(--ink);
+    color: var(--ink);
+}
+
+.btn-danger {
+    background: var(--danger-light);
+    color: var(--danger);
+    border: 1px solid var(--danger);
+}
+
+.btn-danger:hover {
+    background: var(--danger);
+    color: var(--paper);
+}
+
 /* ------------------------------------------------------------------ */
 /* Features section                                                    */
 /* ------------------------------------------------------------------ */
@@ -511,7 +557,7 @@ a { color: inherit; text-decoration: none; }
 }
 
 .profile-table th {
-    text-align: left;
+    text-align: center;
     font-size: 0.8rem;
     font-weight: 500;
     color: var(--ink-muted);
