@@ -16,6 +16,7 @@ from database.queries import (
     insert_expense,
     update_expense,
 )
+from database.queries import delete_expense as delete_expense_row
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "dev-secret-key")
@@ -283,7 +284,7 @@ def profile():
 
 
 # ------------------------------------------------------------------ #
-# Placeholder routes — students will implement these                  #
+# Expense management routes                                          #
 # ------------------------------------------------------------------ #
 
 
@@ -358,9 +359,19 @@ def edit_expense(id):
     return redirect(url_for("profile"))
 
 
-@app.route("/expenses/<int:id>/delete")
+@app.route("/expenses/<int:id>/delete", methods=["POST"])
 def delete_expense(id):
-    return "Delete expense — coming in Step 9"
+    if "user_id" not in session:
+        return redirect(url_for("login"))
+
+    expense = get_expense_by_id(id, session["user_id"])
+    if expense is None:
+        abort(404)
+
+    delete_expense_row(id, session["user_id"])
+    flash("Expense deleted.", "success")
+
+    return redirect(url_for("profile"))
 
 
 if __name__ == "__main__":
